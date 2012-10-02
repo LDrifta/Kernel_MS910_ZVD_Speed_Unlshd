@@ -57,6 +57,8 @@
 #define VDD_RAW(mv) (((MV(mv) / V_STEP) - 30) | VREG_DATA)
 
 #define MAX_AXI_KHZ 192000
+#define SEMC_ACPU_MIN_UV_MV 750U
+#define SEMC_ACPU_MAX_UV_MV 1525U
 
 struct clock_state {
 	struct clkctl_acpu_speed	*current_speed;
@@ -173,9 +175,6 @@ static void acpuclk_config_pll2(struct pll *pll)
 {
 	uint32_t config = readl(PLL2_CONFIG_ADDR);
 
-	/* Make sure write to disable PLL_2 has completed
-	 * before reconfiguring that PLL. */
-	mb();
 	writel(pll->l, PLL2_L_VAL_ADDR);
 	writel(pll->m, PLL2_M_VAL_ADDR);
 	writel(pll->n, PLL2_N_VAL_ADDR);
@@ -184,8 +183,6 @@ static void acpuclk_config_pll2(struct pll *pll)
 	else
 		config &= ~BIT(15);
 	writel(config, PLL2_CONFIG_ADDR);
-	/* Make sure PLL is programmed before returning. */
-	mb();
 }
 
 /* Set clock source and divider given a clock speed */
@@ -210,10 +207,8 @@ static void acpuclk_set_src(const struct clkctl_acpu_speed *s)
 
 	/* Program clock source selection. */
 	writel(reg_clksel, SCSS_CLK_SEL_ADDR);
-
-	/* Make sure switch to new source is complete. */
-	dsb();
 }
+//sairam.valasala@lge.com vibrator impl
 // BEGIN : munho.lee@lge.com 2011-02-01
 // MOD: 0015191: [Vibrator] Vibrator irregular fix
 int isVibrator(void); 
@@ -224,9 +219,10 @@ int acpuclk_set_rate(int cpu, unsigned long rate, enum setrate_reason reason)
 	struct clkctl_acpu_speed *tgt_s, *strt_s;
 	int res, rc = 0;
 // BEGIN : munho.lee@lge.com 2011-02-01
+//sairam.valasala vibrator impl
 // MOD: 0015191: [Vibrator] Vibrator irregular fix
-//	if(isVibrator()==1)
-//				rate=1024000;
+	if(isVibrator()==1)
+		rate=1024000;
 // END : munho.lee@lge.com 2011-02-01
 
 	if (reason == SETRATE_CPUFREQ)
@@ -488,8 +484,8 @@ void __init pll2_fixup(void)
 		if (speed->src != PLL_2)
 			backup_s = speed;
 		if (speed->pll_rate && speed->pll_rate->l == pll2_l) {
-			speed++;
-			speed->acpu_clk_khz = 0;
+			//speed++;
+			//speed->acpu_clk_khz = 0;
 			return;
 		}
 	}
